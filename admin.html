@@ -88,8 +88,16 @@
   .status-sel { border: 1.5px solid var(--gray-400); border-radius: 6px; padding: 7px 12px; font-size: 13px; font-family: inherit; color: var(--gray-800); }
   .save-btn { padding: 7px 18px; background: var(--brand); color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
   .save-btn:hover { background: var(--brand-dark); }
+  /* NOTIFICAÇÃO */
+  .notif-wrap { display: flex; align-items: center; gap: 6px; }
+  .notif-sel { border: 1px solid var(--gray-400); border-radius: 5px; padding: 4px 7px; font-size: 12px; color: var(--gray-800); background: #fff; font-family: inherit; max-width: 160px; }
+  .notif-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--brand); color: #fff; border: none; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .notif-btn:hover { background: var(--brand-dark); }
+  .notif-btn:disabled { background: var(--gray-400); cursor: not-allowed; }
+  .notif-btn.sent { background: #2e7d32; }
   /* SPINNER */
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
+  .spinner-sm { display: inline-block; width: 11px; height: 11px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media(max-width: 900px) {
     .sidebar { width: 100%; height: auto; position: relative; flex-direction: row; flex-wrap: wrap; }
@@ -167,6 +175,7 @@
             <th>Status</th>
             <th>Data</th>
             <th>Anexo</th>
+            <th>Notificar setor</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -214,6 +223,19 @@
   // CONFIGURAÇÃO — mesma URL do Apps Script
   // ============================================================
   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzQii0sXbW3qWFDxFknnY-yE6UuGg7svbC54UgFMq9EXRCi4RYw89JPwPsi-vUIvuhW/exec';
+ 
+  const SETORES = [
+    { nome: 'Direção de operações', email: 'financeiro@gestaoonsaude.com' },
+    { nome: 'Qualidade',            email: 'coord.qualidade@gestaoonsaude.com' },
+    { nome: 'Relacional',           email: 'coord.tecnica@gestaoonsaude.com' },
+    { nome: 'Educacional',          email: 'educacao@gestaoonsaude.com' },
+    { nome: 'Adm. Assistencial',    email: 'admassistencial@gestaoonsaude.com' },
+    { nome: 'Logística',            email: 'contato@gestaoonsaude.com' },
+    { nome: 'DP',                   email: 'dpessoal@gestaoonsaude.com' },
+    { nome: 'RH',                   email: 'relacoeshumanas@gestaoonsaude.com' },
+    { nome: 'Marketing',            email: 'marketing@gestaoonsaude.com' },
+    { nome: 'Financeiro',           email: 'financeiro2@gestaoonsaude.com' },
+  ];
   // ============================================================
  
   let dados = [];
@@ -238,7 +260,18 @@
   }
  
   function setTableLoading() {
-    document.getElementById('tbody').innerHTML = '<tr class="empty-row"><td colspan="7">Carregando manifestações...</td></tr>';
+    document.getElementById('tbody').innerHTML = '<tr class="empty-row"><td colspan="8">Carregando manifestações...</td></tr>';
+  }
+ 
+  function notifCell(r, idx) {
+    const opts = SETORES.map(s => `<option value="${s.email}" data-nome="${s.nome}">${s.nome}</option>`).join('');
+    return `<div class="notif-wrap" onclick="event.stopPropagation()">
+      <select class="notif-sel" id="sel-${idx}">${opts}</select>
+      <button class="notif-btn" id="btn-${idx}" onclick="notificar(${idx})">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Enviar
+      </button>
+    </div>`;
   }
  
   function filtrar() {
@@ -271,11 +304,13 @@
   function renderTabela() {
     const tbody = document.getElementById('tbody');
     if (!filtrados.length) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Nenhuma manifestação encontrada.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Nenhuma manifestação encontrada.</td></tr>';
       return;
     }
-    tbody.innerHTML = filtrados.map((r, i) => `
-      <tr onclick="abrirModal(${dados.indexOf(r)})">
+    tbody.innerHTML = filtrados.map((r, i) => {
+      const idx = dados.indexOf(r);
+      return `
+      <tr onclick="abrirModal(${idx})">
         <td><strong>${r.protocolo}</strong></td>
         <td>${r.tipo}</td>
         <td style="font-size:12px; color:var(--gray-600);">${r.unidade}</td>
@@ -283,7 +318,9 @@
         <td>${statusBadge(r.status)}</td>
         <td style="font-size:12px; color:var(--gray-600); white-space:nowrap;">${r.data}</td>
         <td onclick="event.stopPropagation()">${anexoCell(r)}</td>
-      </tr>`).join('');
+        <td>${notifCell(r, idx)}</td>
+      </tr>`;
+    }).join('');
   }
  
   function atualizarMetricas() {
@@ -341,6 +378,53 @@
   document.getElementById('modal').addEventListener('click', function(e) {
     if (e.target === this) fecharModal();
   });
+ 
+  async function notificar(idx) {
+    const r = dados[idx];
+    const sel = document.getElementById(`sel-${idx}`);
+    const btn = document.getElementById(`btn-${idx}`);
+    const emailDestino = sel.value;
+    const nomeSetor = sel.options[sel.selectedIndex].text;
+    if (!emailDestino) { alert('Selecione um setor.'); return; }
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-sm"></span> Enviando...';
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'notificarSetor',
+          protocolo: r.protocolo,
+          emailDestino,
+          nomeSetor,
+          unidade: r.unidade,
+          tipo: r.tipo,
+          descricao: r.descricao,
+          nome: r.nome,
+          contato: r.contato,
+          data: r.data,
+          status: r.status
+        })
+      });
+      const json = await resp.json();
+      if (json.status === 'ok') {
+        btn.innerHTML = '✓ Enviado';
+        btn.classList.add('sent');
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.classList.remove('sent');
+          btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar';
+        }, 3000);
+      } else {
+        alert('Erro ao enviar: ' + (json.message || 'Tente novamente.'));
+        btn.disabled = false;
+        btn.innerHTML = 'Enviar';
+      }
+    } catch(e) {
+      alert('Erro de conexão. Tente novamente.');
+      btn.disabled = false;
+      btn.innerHTML = 'Enviar';
+    }
+  }
  
   // Carrega ao abrir
   carregarDados();
