@@ -361,12 +361,12 @@ function atualizarMetricas() {
 function abrirModal(idx) {
   idxAtual = idx; const r = dados[idx];
   document.getElementById('m-protocolo').textContent = r.protocolo;
-  document.getElementById('m-subtitulo').textContent = r.data + ' — ' + r.tipo;
+  document.getElementById('m-subtitulo').textContent = formatarDataHora(r.data) + ' — ' + r.tipo;
   document.getElementById('m-unidade').textContent = r.unidade;
   document.getElementById('m-tipo').textContent = r.tipo;
   document.getElementById('m-nome').textContent = r.nome;
   document.getElementById('m-contato').textContent = r.contato;
-  document.getElementById('m-data').textContent = r.data;
+  document.getElementById('m-data').textContent = formatarDataHora(r.data);
   document.getElementById('m-desc').textContent = r.descricao;
   document.getElementById('m-status-sel').value = r.status;
   const ae = document.getElementById('m-anexos');
@@ -412,6 +412,21 @@ function parseData(str) {
   }
   const d = new Date(str);
   return isNaN(d) ? null : d;
+}
+ 
+function formatarData(str) {
+  if (!str) return '—';
+  const d = parseData(str);
+  if (!d) return str;
+  return d.toLocaleDateString('pt-BR', { timeZone: 'America/Belem' });
+}
+ 
+function formatarDataHora(str) {
+  if (!str) return '—';
+  const d = parseData(str);
+  if (!d) return str;
+  return d.toLocaleDateString('pt-BR', { timeZone: 'America/Belem' }) + ' ' +
+         d.toLocaleTimeString('pt-BR', { timeZone: 'America/Belem', hour: '2-digit', minute: '2-digit' });
 }
  
 function renderDashboard() {
