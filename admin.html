@@ -264,16 +264,18 @@
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzQii0sXbW3qWFDxFknnY-yE6UuGg7svbC54UgFMq9EXRCi4RYw89JPwPsi-vUIvuhW/exec';
 const SETORES = [
+  { nome: 'Adm. Assistencial', email: 'admassistencial@gestaoonsaude.com' },
   { nome: 'Direção de operações', email: 'financeiro@gestaoonsaude.com' },
+  { nome: 'DP', email: 'dpessoal@gestaoonsaude.com' },
+  { nome: 'Educacional', email: 'educacao@gestaoonsaude.com' },
+  { nome: 'Escalista', email: 'escalista1@gestaoonsaude.com' },
+  { nome: 'Financeiro', email: 'financeiro2@gestaoonsaude.com' },
+  { nome: 'Gerência assistencial', email: 'gerente.assistencial@gestaoonsaude.com' },
+  { nome: 'Logística', email: 'contato@gestaoonsaude.com' },
+  { nome: 'Marketing', email: 'marketing@gestaoonsaude.com' },
   { nome: 'Qualidade', email: 'coord.qualidade@gestaoonsaude.com' },
   { nome: 'Relacional', email: 'coord.tecnica@gestaoonsaude.com' },
-  { nome: 'Educacional', email: 'educacao@gestaoonsaude.com' },
-  { nome: 'Adm. Assistencial', email: 'admassistencial@gestaoonsaude.com' },
-  { nome: 'Logística', email: 'contato@gestaoonsaude.com' },
-  { nome: 'DP', email: 'dpessoal@gestaoonsaude.com' },
   { nome: 'RH', email: 'relacoeshumanas@gestaoonsaude.com' },
-  { nome: 'Marketing', email: 'marketing@gestaoonsaude.com' },
-  { nome: 'Financeiro', email: 'financeiro2@gestaoonsaude.com' },
 ];
  
 let dados = [], filtrados = [], idxAtual = null, chartTempo = null, chartTipo = null;
@@ -323,9 +325,9 @@ function anexoCell(r) {
 }
  
 function notifCell(r, idx) {
-  // Usa o setor salvo na planilha; se não tiver, usa o primeiro
-  const savedEmail = r.setorNotificado || SETORES[0].email;
-  const optsHtml = SETORES.map(s=>`<option value="${s.email}" ${s.email===savedEmail?'selected':''}>${s.nome}</option>`).join('');
+  // Usa o setor salvo na planilha; se não tiver, deixa em branco
+  const savedEmail = r.setorNotificado || '';
+  const optsHtml = '<option value="">— Selecione o setor —</option>' + SETORES.map(s=>`<option value="${s.email}" ${s.email===savedEmail?'selected':''}>${s.nome}</option>`).join('');
   return `<div class="notif-wrap" onclick="event.stopPropagation()"><select class="notif-sel" id="sel-${idx}" onchange="salvarSetor('${r.protocolo}', this.value, ${idx})">${optsHtml}</select><button class="notif-btn" id="btn-${idx}" onclick="notificar(${idx})"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar</button></div>`;
 }
  
@@ -406,10 +408,17 @@ async function notificar(idx) {
  
 function parseData(str) {
   if (!str) return null;
+  // Formato dd/MM/yyyy ou dd/MM/yyyy HH:mm:ss
   if (typeof str === 'string' && str.includes('/')) {
-    const [d,m,y] = str.split('/');
+    const parts = str.trim().split(' ');
+    const [d,m,y] = parts[0].split('/');
+    if (parts[1]) {
+      const [h,min,s] = parts[1].split(':');
+      return new Date(parseInt(y), parseInt(m)-1, parseInt(d), parseInt(h)||0, parseInt(min)||0, parseInt(s)||0);
+    }
     return new Date(parseInt(y), parseInt(m)-1, parseInt(d));
   }
+  // Formato ISO — converte para Brasília (UTC-3)
   const d = new Date(str);
   return isNaN(d) ? null : d;
 }
@@ -418,15 +427,15 @@ function formatarData(str) {
   if (!str) return '—';
   const d = parseData(str);
   if (!d) return str;
-  return d.toLocaleDateString('pt-BR', { timeZone: 'America/Belem' });
+  return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
  
 function formatarDataHora(str) {
   if (!str) return '—';
   const d = parseData(str);
   if (!d) return str;
-  return d.toLocaleDateString('pt-BR', { timeZone: 'America/Belem' }) + ' ' +
-         d.toLocaleTimeString('pt-BR', { timeZone: 'America/Belem', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) + ' às ' +
+         d.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
 }
  
 function renderDashboard() {
